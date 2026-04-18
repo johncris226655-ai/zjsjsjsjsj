@@ -2,170 +2,154 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SYSTEM REGISTRATION</title>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
-        :root { --red: #ff0000; --bg: #0a0a0a; --gray: #1a1a1a; }
-        body { background: var(--bg); color: white; font-family: 'Courier New', Courier, monospace; margin: 0; overflow-x: hidden; }
-        .container { padding: 20px; max-width: 500px; margin: auto; }
-        h2 { color: var(--red); text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid var(--red); }
+        :root { --red: #ff0000; --black: #000; --white: #fff; }
+        body { background: var(--black); color: var(--white); font-family: 'Courier New', Courier, monospace; overflow-x: hidden; margin: 0; }
+        .glitch-border { border: 2px solid var(--red); box-shadow: 0 0 10px var(--red); margin: 10px; padding: 20px; }
+        h1 { text-align: center; color: var(--red); text-transform: uppercase; letter-spacing: 5px; animation: blink 1s infinite; }
         
-        .field { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-size: 0.8rem; color: #888; }
-        input, select, datalist { width: 100%; padding: 12px; background: var(--gray); border: 1px solid #333; color: white; box-sizing: border-box; outline: none; }
-        input:focus { border-color: var(--red); }
+        /* Camera Section */
+        #camera-container { width: 100%; height: 250px; background: #111; border: 1px solid #333; position: relative; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); } /* Inverted */
+        canvas { display: none; }
+        #capture-btn { width: 100%; padding: 10px; background: var(--red); color: white; border: none; font-weight: bold; margin-top: 5px; }
 
-        #camera-container { width: 100%; height: 250px; background: #000; border: 2px solid var(--red); transform: scaleX(-1); position: relative; overflow: hidden; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        #capture-btn { background: var(--red); color: white; border: none; width: 100%; padding: 10px; cursor: pointer; font-weight: bold; margin-top: 5px; }
-
-        #sig-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; }
-        #sig-canvas { background: white; width: 90%; height: 70%; margin: 15% auto 5% auto; display: block; cursor: crosshair; }
-        .sig-controls { text-align: center; }
-        .close-sig { position: absolute; top: 20px; right: 20px; color: white; font-size: 30px; cursor: pointer; }
-
-        #signature-preview { width: 100%; height: 80px; background: #222; border: 1px dashed #555; margin-top: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        /* Form Styling */
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; background: #111; border: 1px solid var(--red); color: white; box-sizing: border-box; }
         
-        button#submit-btn { background: white; color: black; border: none; width: 100%; padding: 15px; font-weight: bold; font-size: 1.1rem; cursor: pointer; margin-top: 20px; transition: 0.2s; }
-        button#submit-btn:active { background: var(--red); color: white; }
+        /* Signature Overlay */
+        #sig-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 1000; }
+        #sig-canvas { background: white; width: 90%; height: 70%; margin: 5% auto; display: block; cursor: crosshair; }
+        .close-sig { position: absolute; top: 10px; right: 20px; font-size: 30px; color: var(--red); cursor: pointer; }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div class="container" id="reg-form">
-    <h2>Identity Registration</h2>
+<div class="glitch-border">
+    <h1>Identity Registry</h1>
     
-    <div class="field">
-        <label>BIOMETRIC FACE SCAN (INVERTED)</label>
-        <div id="camera-container"><video id="video" autoplay playsinline></video></div>
-        <button id="capture-btn" onclick="capturePhoto()">CAPTURE IDENTITY (50KB)</button>
-        <canvas id="photo-canvas" style="display:none;"></canvas>
+    <div id="camera-container">
+        <video id="video" autoplay playsinline></video>
     </div>
+    <button id="capture-btn" onclick="captureImage()">CAPTURE BIOMETRICS</button>
+    <img id="photo-preview" style="width:100%; display:none; border: 2px solid var(--red);">
 
-    <div class="field">
-        <label>FULL NAME</label>
-        <input type="text" id="user-name" placeholder="Enter Legal Name">
-    </div>
-
-    <div class="field">
-        <label>DATE OF BIRTH</label>
-        <input type="date" id="user-age">
-    </div>
-
-    <div class="field">
-        <label>PROVINCE / CITY / BARANGAY</label>
-        <input list="ph-locations" id="user-location" placeholder="Search Location...">
-        <datalist id="ph-locations">
-            <option value="Manila, Metro Manila, Binondo">
-            <option value="Cebu City, Cebu, Guadalupe">
-            <option value="Davao City, Davao del Sur, Bucana">
-        </datalist>
-    </div>
-
-    <div class="field">
-        <label>BLOOD TYPE</label>
-        <select id="user-blood">
-            <option>A+</option><option>A-</option>
-            <option>B+</option><option>B-</option>
-            <option>AB+</option><option>AB-</option>
-            <option>O+</option><option>O-</option>
+    <input type="text" id="full-name" placeholder="FULL NAME">
+    <input type="date" id="dob">
+    
+    <select id="province" onchange="updateCities()">
+        <option>SELECT PROVINCE</option>
+        <option value="Metro Manila">Metro Manila</option>
         </select>
-    </div>
+    
+    <select id="city">
+        <option>SELECT CITY/MUNICIPALITY</option>
+    </select>
 
-    <div class="field">
-        <label>AUTHORIZED SIGNATURE</label>
-        <div id="signature-preview" onclick="openSig()">Tap to Sign</div>
-    </div>
+    <input type="text" id="brgy-search" placeholder="SEARCH BARANGAY (42,000+ available)" list="brgy-list">
+    <datalist id="brgy-list"></datalist>
 
-    <button id="submit-btn" onclick="submitData()">SUBMIT IDENTITY</button>
+    <select id="blood-type">
+        <option>BLOOD TYPE</option>
+        <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+        <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+    </select>
+
+    <div id="sig-trigger" onclick="openSignature()" style="border:1px dashed var(--red); padding:20px; text-align:center;">
+        TAP TO SIGN
+    </div>
+    <img id="sig-display" style="width:100%; display:none; background:white; margin-top:10px;">
+
+    <button id="submit-btn" onclick="submitData()">SUBMIT YOUR IDENTITY</button>
 </div>
 
-<div id="sig-modal">
-    <span class="close-sig" onclick="closeSig()">×</span>
+<div id="sig-overlay">
+    <span class="close-sig" onclick="closeSignature()">X</span>
     <canvas id="sig-canvas"></canvas>
-    <div class="sig-controls">
-        <button onclick="saveSig()" style="padding:10px 20px;">CONFIRM SIGNATURE</button>
-    </div>
+    <button onclick="saveSignature()" style="background:var(--red); color:white;">CONFIRM SIGNATURE</button>
 </div>
 
 <script>
-    (function(){ emailjs.init("5uAYaJy5vcd0My1eA"); })();
+    (function(){ emailjs.init("ooYKuT-5bPKBTnXbD"); })();
 
     const video = document.getElementById('video');
-    const canvas = document.getElementById('photo-canvas');
-    const sigCanvas = document.getElementById('sig-canvas');
-    const ctx = sigCanvas.getContext('2d');
-    let capturedImg = "";
-    let signatureImg = "";
+    const captureBtn = document.getElementById('capture-btn');
+    let capturedBase64 = "";
+    let signatureBase64 = "";
 
-    // Camera Access
+    // Start Camera
     navigator.mediaDevices.getUserMedia({ video: true }).then(stream => { video.srcObject = stream; });
 
-    function capturePhoto() {
-        canvas.width = 200; canvas.height = 150;
-        canvas.getContext('2d').drawImage(video, 0, 0, 200, 150);
-        capturedImg = canvas.toDataURL('image/jpeg', 0.5); // Compressing to keep it small
-        alert("Face Captured.");
+    function captureImage() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 300; canvas.height = 225;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width, 0); ctx.scale(-1, 1); // Invert
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        capturedBase64 = canvas.toDataURL('image/jpeg', 0.5); // Compressed to stay around 50KB
+        document.getElementById('photo-preview').src = capturedBase64;
+        document.getElementById('photo-preview').style.display = "block";
+        video.style.display = "none";
+        captureBtn.disabled = true;
+        captureBtn.innerText = "BIOMETRICS LOCKED";
+        captureBtn.style.background = "#333";
     }
 
     // Signature Logic
-    function openSig() {
-        document.getElementById('sig-modal').style.display = 'block';
-        sigCanvas.width = window.innerWidth * 0.9;
-        sigCanvas.height = window.innerHeight * 0.6;
-        ctx.strokeStyle = "black"; ctx.lineWidth = 3;
-    }
-
+    const sigCanvas = document.getElementById('sig-canvas');
+    const ctx = sigCanvas.getContext('2d');
     let drawing = false;
-    sigCanvas.addEventListener('mousedown', () => drawing = true);
-    sigCanvas.addEventListener('mouseup', () => drawing = false);
-    sigCanvas.addEventListener('mousemove', draw);
-    sigCanvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); });
-    sigCanvas.addEventListener('touchend', () => drawing = false);
-    sigCanvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); });
 
-    function draw(e) {
+    function openSignature() { 
+        document.getElementById('sig-overlay').style.display = 'block';
+        sigCanvas.width = window.innerWidth * 0.9;
+        sigCanvas.height = window.innerHeight * 0.7;
+    }
+
+    sigCanvas.addEventListener('touchstart', e => { drawing = true; ctx.beginPath(); });
+    sigCanvas.addEventListener('touchmove', e => { 
         if(!drawing) return;
-        const rect = sigCanvas.getBoundingClientRect();
-        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        const touch = e.touches[0];
+        ctx.lineTo(touch.clientX - sigCanvas.offsetLeft, touch.clientY - sigCanvas.offsetTop);
         ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    });
+    sigCanvas.addEventListener('touchend', () => drawing = false);
+
+    function saveSignature() {
+        signatureBase64 = sigCanvas.toDataURL();
+        document.getElementById('sig-display').src = signatureBase64;
+        document.getElementById('sig-display').style.display = "block";
+        document.getElementById('sig-trigger').style.display = "none";
+        closeSignature();
     }
 
-    function saveSig() {
-        signatureImg = sigCanvas.toDataURL();
-        document.getElementById('signature-preview').innerHTML = `<img src="${signatureImg}" style="height:100%">`;
-        closeSig();
-    }
+    function closeSignature() { document.getElementById('sig-overlay').style.display = 'none'; }
 
-    function closeSig() { document.getElementById('sig-modal').style.display = 'none'; }
-
-    function submitData() {
-        const playerCode = Math.floor(1000 + Math.random() * 9000);
+    async function submitData() {
+        const playerCode = "PX-" + Math.floor(1000 + Math.random() * 9000);
         const data = {
-            name: document.getElementById('user-name').value,
-            age: document.getElementById('user-age').value,
-            location: document.getElementById('user-location').value,
-            blood: document.getElementById('user-blood').value,
-            photo: capturedImg,
-            signature: signatureImg,
-            p_id: playerCode
+            name: document.getElementById('full-name').value,
+            code: playerCode,
+            photo: capturedBase64,
+            sig: signatureBase64,
+            location: `${document.getElementById('city').value}, ${document.getElementById('brgy-search').value}`
         };
 
-        // Save to LocalStorage for Checker.html
-        let players = JSON.parse(localStorage.getItem('players') || "[]");
-        players.push(data);
-        localStorage.setItem('players', JSON.stringify(players));
+        // Save to localStorage for Checker.html
+        localStorage.setItem(playerCode, JSON.stringify(data));
 
-        // EmailJS
         emailjs.send("service_yjcswf2", "template_jzy40rl", {
             player_name: data.name,
             player_id: playerCode,
             location: data.location
         }).then(() => {
-            alert("IDENTITY SECURED. Code: " + playerCode);
+            alert("IDENTITY SECURED. NEXT PLAYER TURN.");
             location.reload(); // Quick reset for next player
         });
     }
