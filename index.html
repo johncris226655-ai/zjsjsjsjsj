@@ -3,198 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IDENTITY REGISTRATION | SYSTEM</title>
+    <title>System Registration | Protocol 01</title>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <style>
-        :root { --red: #ff0000; --black: #0a0a0a; --white: #ffffff; }
-        body { background: var(--black); color: var(--white); font-family: 'Courier New', monospace; overflow-x: hidden; margin: 0; }
-        #app { padding: 20px; max-width: 500px; margin: auto; border-left: 2px solid var(--red); border-right: 2px solid var(--red); min-height: 100vh; }
-        h2 { text-transform: uppercase; letter-spacing: 5px; text-align: center; border-bottom: 2px solid var(--red); padding-bottom: 10px; }
+        :root { --red: #ff0000; --bg: #0a0a0a; --gray: #1a1a1a; --text: #ffffff; }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; overflow-x: hidden; }
+        .container { padding: 20px; max-width: 500px; margin: auto; border: 1px solid var(--red); box-shadow: 0 0 15px rgba(255,0,0,0.2); }
+        h2 { text-align: center; letter-spacing: 5px; border-bottom: 2px solid var(--red); padding-bottom: 10px; }
         
-        .field { margin-bottom: 20px; }
-        label { display: block; font-size: 0.8rem; color: var(--red); margin-bottom: 5px; }
-        input, select { width: 100%; background: #1a1a1a; border: 1px solid #333; color: white; padding: 10px; box-sizing: border-box; outline: none; }
-        input:focus { border-color: var(--red); }
-
-        #camera-container { width: 100%; height: 250px; background: #000; border: 2px solid var(--red); position: relative; overflow: hidden; }
-        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        canvas#photo-canvas { display: none; }
-        #captured-image { width: 100%; height: 100%; object-fit: cover; display: none; transform: scaleX(-1); }
-
-        .btn { background: var(--red); color: white; border: none; padding: 15px; width: 100%; cursor: pointer; font-weight: bold; text-transform: uppercase; margin-top: 10px; }
-        .btn:disabled { background: #333; cursor: not-allowed; }
-
-        /* Signature Overlay */
-        #sig-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; align-items: center; justify-content: center; }
-        #sig-canvas { background: white; border: 5px solid var(--red); cursor: crosshair; }
+        .field-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; color: var(--red); margin-bottom: 5px; text-transform: uppercase; }
+        input, select, button { width: 100%; padding: 10px; background: var(--gray); border: 1px solid #333; color: white; box-sizing: border-box; }
         
-        #id-display { font-size: 2rem; color: var(--red); text-align: center; margin: 20px 0; display: none; }
+        #camera-container { position: relative; width: 100%; height: 250px; background: #000; border: 2px solid var(--red); overflow: hidden; }
+        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); } /* Inverted */
+        #photo-canvas { display: none; width: 100%; height: 100%; transform: scaleX(-1); }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; }
+        .modal-content { position: relative; width: 90%; height: 70%; margin: 15% auto; background: #fff; border: 5px solid var(--red); }
+        #sig-canvas { width: 100%; height: 100%; cursor: crosshair; }
+        .close-sig { position: absolute; top: -40px; right: 0; color: white; font-size: 30px; cursor: pointer; }
+
+        #loading { display: none; text-align: center; color: var(--red); font-weight: bold; padding: 20px; }
+        .success-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; color: var(--red); text-align: center; padding-top: 20%; font-size: 24px; z-index: 200; }
     </style>
 </head>
 <body>
 
-<div id="app">
-    <h2>Citizen Registry</h2>
+<div class="container" id="regForm">
+    <h2>IDENTITY REGISTRATION</h2>
     
-    <div class="field">
-        <label>BIOMETRIC SCAN (FACE)</label>
+    <div class="field-group">
+        <label>Biometric Face Scan</label>
         <div id="camera-container">
             <video id="video" autoplay playsinline></video>
-            <img id="captured-image">
+            <canvas id="photo-canvas"></canvas>
         </div>
-        <button type="button" class="btn" id="capture-btn">Capture Identity (50KB Limit)</button>
+        <button type="button" id="capture-btn" onclick="capturePhoto()">INITIALIZE CAPTURE</button>
     </div>
 
-    <div class="field">
-        <label>FULL NAME</label>
-        <input type="text" id="name" placeholder="LASTNAME, FIRSTNAME MI.">
+    <div class="field-group">
+        <label>Full Name</label>
+        <input type="text" id="userName" placeholder="LAST NAME, FIRST NAME">
     </div>
 
-    <div class="field">
-        <label>DATE OF BIRTH</label>
-        <input type="date" id="dob">
+    <div class="field-group">
+        <label>Birth Date</label>
+        <input type="date" id="userAge">
     </div>
 
-    <div class="field">
-        <label>BLOOD TYPE</label>
-        <select id="bloodtype">
-            <option value="A+">A+</option><option value="A-">A-</option>
-            <option value="B+">B+</option><option value="B-">B-</option>
-            <option value="AB+">AB+</option><option value="AB-">AB-</option>
-            <option value="O+">O+</option><option value="O-">O-</option>
+    <div class="field-group">
+        <label>Region/Province</label>
+        <select id="province" onchange="updateCities()">
+            <option value="">Select Province</option>
+            <option value="Metro Manila">Metro Manila</option>
+            <option value="Cavite">Cavite</option>
+            <option value="Bulacan">Bulacan</option>
         </select>
     </div>
 
-    <div class="field">
-        <label>LOCATION (PROVINCE / CITY / BRGY)</label>
-        <select id="province"><option>Loading Provinces...</option></select>
-        <select id="city" style="margin-top:5px;"><option>Select Province First</option></select>
-        <select id="brgy" style="margin-top:5px;"><option>Select City First</option></select>
+    <div class="field-group">
+        <label>City/Municipality</label>
+        <select id="city" onchange="updateBrgy()">
+            <option value="">Select City</option>
+        </select>
     </div>
 
-    <div class="field">
-        <label>SIGNATURE</label>
-        <button type="button" class="btn" id="open-sig">Doodle / Sign</button>
-        <img id="sig-preview" style="width:100%; margin-top:10px; border:1px dashed var(--red); display:none;">
+    <div class="field-group">
+        <label>Barangay</label>
+        <select id="brgy">
+            <option value="">Select Barangay</option>
+        </select>
     </div>
 
-    <div id="id-display"></div>
-    <button class="btn" id="submit-btn" style="background: #fff; color: #000;">Confirm Your Identity</button>
+    <div class="field-group">
+        <label>Blood Type</label>
+        <select id="bloodType">
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+        </select>
+    </div>
+
+    <div class="field-group">
+        <label>Specimen Signature</label>
+        <button type="button" onclick="openSignature()">OPEN SIGNATURE PAD</button>
+        <div id="sig-preview" style="margin-top:5px; height: 50px; background: #222; display: none; text-align: center;">
+            <img id="sig-img" src="" style="height:100%; filter: invert(1);">
+        </div>
+    </div>
+
+    <button id="submitBtn" style="background: var(--red); font-weight: bold;" onclick="submitIdentity()">CONFIRM YOUR IDENTITY</button>
+    <div id="loading">UPLOADING DATA TO CENTRAL SERVER...</div>
 </div>
 
-<div id="sig-overlay">
-    <span style="color:red; margin-bottom:10px;">SIGN WITHIN THE BOX</span>
-    <canvas id="sig-canvas"></canvas>
-    <div style="width: 300px; display: flex; gap: 10px;">
-        <button class="btn" id="clear-sig" style="background:#555">Clear</button>
-        <button class="btn" id="save-sig">Confirm</button>
+<div class="modal" id="sigModal">
+    <span class="close-sig" onclick="closeSignature()">×</span>
+    <div class="modal-content">
+        <canvas id="sig-canvas"></canvas>
+        <button style="position: absolute; bottom: -50px; left: 0;" onclick="saveSignature()">CONFIRM SIGNATURE</button>
     </div>
+</div>
+
+<div class="success-overlay" id="successScreen">
+    <p>DATA SECURED.</p>
+    <p id="displayID"></p>
+    <p>NEXT PLAYER TURN...</p>
+    <button onclick="resetForm()" style="width: auto; padding: 10px 40px;">OK</button>
 </div>
 
 <script>
-    (function(){ emailjs.init("ooYKuT-5bPKBTnXbD"); })();
-
-    const video = document.getElementById('video');
-    const captureBtn = document.getElementById('capture-btn');
-    const capturedImg = document.getElementById('captured-image');
-    let capturedBase64 = "";
+    emailjs.init("10QvwIDADoRTdj9Nh");
 
     // Camera Logic
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('photo-canvas');
+    const captureBtn = document.getElementById('capture-btn');
+    let capturedImage = "";
+
     navigator.mediaDevices.getUserMedia({ video: true }).then(stream => { video.srcObject = stream; });
 
-    captureBtn.onclick = () => {
-        const canvas = document.createElement('canvas');
+    function capturePhoto() {
+        const ctx = canvas.getContext('2d');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
-        ctx.drawImage(video, 0, 0);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        capturedImage = canvas.toDataURL('image/jpeg', 0.5); // Compressed to stay near 50KB
         
-        capturedBase64 = canvas.toDataURL('image/jpeg', 0.5); // Compression to keep near 50KB
-        capturedImg.src = capturedBase64;
-        capturedImg.style.display = "block";
-        video.style.display = "none";
+        video.style.display = 'none';
+        canvas.style.display = 'block';
         captureBtn.disabled = true;
-        captureBtn.innerText = "IDENTITY FROZEN";
+        captureBtn.innerText = "BIOMETRIC FROZEN";
+        captureBtn.style.background = "#444";
+    }
+
+    // Dynamic Address Data (Sample for Manila/Muntinlupa)
+    const data = {
+        "Metro Manila": {
+            "Muntinlupa": ["Alabang", "Bayanan", "Buli", "Cupang", "Poblacion", "Putatan", "Tunasan"],
+            "Manila": ["Binondo", "Ermita", "Intramuros", "Malate", "Quiapo"]
+        }
     };
+
+    function updateCities() {
+        const prov = document.getElementById('province').value;
+        const citySelect = document.getElementById('city');
+        citySelect.innerHTML = '<option value="">Select City</option>';
+        if(data[prov]) {
+            Object.keys(data[prov]).forEach(city => {
+                citySelect.innerHTML += `<option value="${city}">${city}</option>`;
+            });
+        }
+    }
+
+    function updateBrgy() {
+        const prov = document.getElementById('province').value;
+        const city = document.getElementById('city').value;
+        const brgySelect = document.getElementById('brgy');
+        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        if(data[prov] && data[prov][city]) {
+            data[prov][city].forEach(b => {
+                brgySelect.innerHTML += `<option value="${b}">${b}</option>`;
+            });
+        }
+    }
 
     // Signature Logic
     const sigCanvas = document.getElementById('sig-canvas');
-    const signaturePad = new SignaturePad(sigCanvas);
-    function resizeCanvas() { 
-        sigCanvas.width = 300; sigCanvas.height = 400; 
-        signaturePad.clear(); 
+    const sigCtx = sigCanvas.getContext('2d');
+    let writing = false;
+
+    function openSignature() { 
+        document.getElementById('sigModal').style.display = 'block'; 
+        sigCanvas.width = sigCanvas.offsetWidth;
+        sigCanvas.height = sigCanvas.offsetHeight;
+        sigCtx.lineWidth = 3;
+        sigCtx.lineCap = "round";
     }
-    window.addEventListener("resize", resizeCanvas); resizeCanvas();
+    function closeSignature() { document.getElementById('sigModal').style.display = 'none'; }
+    
+    sigCanvas.onmousedown = () => writing = true;
+    sigCanvas.onmouseup = () => { writing = false; sigCtx.beginPath(); };
+    sigCanvas.onmousemove = (e) => {
+        if(!writing) return;
+        sigCtx.lineTo(e.offsetX, e.offsetY);
+        sigCtx.stroke();
+    };
 
-    document.getElementById('open-sig').onclick = () => document.getElementById('sig-overlay').style.display = 'flex';
-    document.getElementById('save-sig').onclick = () => {
-        if (signaturePad.isEmpty()) return alert("Sign first");
-        document.getElementById('sig-preview').src = signaturePad.toDataURL();
+    function saveSignature() {
+        const sigData = sigCanvas.toDataURL();
+        document.getElementById('sig-img').src = sigData;
         document.getElementById('sig-preview').style.display = 'block';
-        document.getElementById('sig-overlay').style.display = 'none';
-    };
-    document.getElementById('clear-sig').onclick = () => signaturePad.clear();
+        closeSignature();
+    }
 
-    // Location Data (API)
-    const provSelect = document.getElementById('province');
-    const citySelect = document.getElementById('city');
-    const brgySelect = document.getElementById('brgy');
-
-    fetch('https://psgc.gitlab.io/api/provinces/').then(res => res.json()).then(data => {
-        provSelect.innerHTML = '<option>Select Province</option>';
-        data.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
-            provSelect.innerHTML += `<option value="${p.code}">${p.name}</option>`;
-        });
-    });
-
-    provSelect.onchange = () => {
-        fetch(`https://psgc.gitlab.io/api/provinces/${provSelect.value}/cities-municipalities/`).then(res => res.json()).then(data => {
-            citySelect.innerHTML = '<option>Select City</option>';
-            data.sort((a,b) => a.name.localeCompare(b.name)).forEach(c => {
-                citySelect.innerHTML += `<option value="${c.code}">${c.name}</option>`;
-            });
-        });
-    };
-
-    citySelect.onchange = () => {
-        fetch(`https://psgc.gitlab.io/api/cities-municipalities/${citySelect.value}/barangays/`).then(res => res.json()).then(data => {
-            brgySelect.innerHTML = '<option>Select Brgy</option>';
-            data.sort((a,b) => a.name.localeCompare(b.name)).forEach(b => {
-                brgySelect.innerHTML += `<option value="${b.name}">${b.name}</option>`;
-            });
-        });
-    };
-
-    // Submit & Save
-    document.getElementById('submit-btn').onclick = function() {
+    // Submit Logic
+    function submitIdentity() {
         const idNum = Math.floor(10000 + Math.random() * 90000);
         const userData = {
-            name: document.getElementById('name').value,
+            name: document.getElementById('userName').value,
             id: idNum,
-            dob: document.getElementById('dob').value,
-            blood: document.getElementById('bloodtype').value,
-            loc: `${brgySelect.value}, ${citySelect.options[citySelect.selectedIndex].text}, ${provSelect.options[provSelect.selectedIndex].text}`,
-            photo: capturedBase64,
-            sig: signaturePad.toDataURL()
+            age: document.getElementById('userAge').value,
+            location: `${document.getElementById('brgy').value}, ${document.getElementById('city').value}, ${document.getElementById('province').value}`,
+            blood: document.getElementById('bloodType').value,
+            photo: capturedImage,
+            signature: sigCanvas.toDataURL()
         };
 
-        // Save to localStorage for Checker.html
-        localStorage.setItem(`player_${idNum}`, JSON.stringify(userData));
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('submitBtn').disabled = true;
 
-        // EmailJS
-        emailjs.send("service_yjcswf2", "template_jzy40rl", {
+        emailjs.send("service_njquc85", "template_7nra9xd", {
             player_name: userData.name,
-            player_id: idNum,
-            location: userData.loc
+            player_id: userData.id,
+            to_email: "refuerzojay7@gmail.com"
         }).then(() => {
-            document.getElementById('id-display').innerText = "ID: " + idNum;
-            document.getElementById('id-display').style.display = "block";
-            alert("IDENTITY RECORDED. NEXT PLAYER.");
-            window.location.reload();
+            localStorage.setItem('player_' + idNum, JSON.stringify(userData));
+            document.getElementById('displayID').innerText = "YOUR ID NUMBER: " + idNum;
+            document.getElementById('successScreen').style.display = 'block';
         });
-    };
+    }
+
+    function resetForm() {
+        location.reload();
+    }
 </script>
 </body>
 </html>
