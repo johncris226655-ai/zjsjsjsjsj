@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM REGISTRATION</title>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <style>
+        :root { --red: #ff0000; --bg: #0a0a0a; --gray: #1a1a1a; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', Courier, monospace; margin: 0; overflow-x: hidden; }
+        .container { padding: 20px; max-width: 500px; margin: auto; }
+        h2 { color: var(--red); text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid var(--red); }
+        
+        .field { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 0.8rem; color: #888; }
+        input, select, datalist { width: 100%; padding: 12px; background: var(--gray); border: 1px solid #333; color: white; box-sizing: border-box; outline: none; }
+        input:focus { border-color: var(--red); }
+
+        #camera-container { width: 100%; height: 250px; background: #000; border: 2px solid var(--red); transform: scaleX(-1); position: relative; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        #capture-btn { background: var(--red); color: white; border: none; width: 100%; padding: 10px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+
+        #sig-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; }
+        #sig-canvas { background: white; width: 90%; height: 70%; margin: 15% auto 5% auto; display: block; cursor: crosshair; }
+        .sig-controls { text-align: center; }
+        .close-sig { position: absolute; top: 20px; right: 20px; color: white; font-size: 30px; cursor: pointer; }
+
+        #signature-preview { width: 100%; height: 80px; background: #222; border: 1px dashed #555; margin-top: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        
+        button#submit-btn { background: white; color: black; border: none; width: 100%; padding: 15px; font-weight: bold; font-size: 1.1rem; cursor: pointer; margin-top: 20px; transition: 0.2s; }
+        button#submit-btn:active { background: var(--red); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="reg-form">
+    <h2>Identity Registration</h2>
+    
+    <div class="field">
+        <label>BIOMETRIC FACE SCAN (INVERTED)</label>
+        <div id="camera-container"><video id="video" autoplay playsinline></video></div>
+        <button id="capture-btn" onclick="capturePhoto()">CAPTURE IDENTITY (50KB)</button>
+        <canvas id="photo-canvas" style="display:none;"></canvas>
+    </div>
+
+    <div class="field">
+        <label>FULL NAME</label>
+        <input type="text" id="user-name" placeholder="Enter Legal Name">
+    </div>
+
+    <div class="field">
+        <label>DATE OF BIRTH</label>
+        <input type="date" id="user-age">
+    </div>
+
+    <div class="field">
+        <label>PROVINCE / CITY / BARANGAY</label>
+        <input list="ph-locations" id="user-location" placeholder="Search Location...">
+        <datalist id="ph-locations">
+            <option value="Manila, Metro Manila, Binondo">
+            <option value="Cebu City, Cebu, Guadalupe">
+            <option value="Davao City, Davao del Sur, Bucana">
+        </datalist>
+    </div>
+
+    <div class="field">
+        <label>BLOOD TYPE</label>
+        <select id="user-blood">
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option>
+            <option>O+</option><option>O-</option>
+        </select>
+    </div>
+
+    <div class="field">
+        <label>AUTHORIZED SIGNATURE</label>
+        <div id="signature-preview" onclick="openSig()">Tap to Sign</div>
+    </div>
+
+    <button id="submit-btn" onclick="submitData()">SUBMIT IDENTITY</button>
+</div>
+
+<div id="sig-modal">
+    <span class="close-sig" onclick="closeSig()">×</span>
+    <canvas id="sig-canvas"></canvas>
+    <div class="sig-controls">
+        <button onclick="saveSig()" style="padding:10px 20px;">CONFIRM SIGNATURE</button>
+    </div>
+</div>
+
+<script>
+    (function(){ emailjs.init("5uAYaJy5vcd0My1eA"); })();
+
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('photo-canvas');
+    const sigCanvas = document.getElementById('sig-canvas');
+    const ctx = sigCanvas.getContext('2d');
+    let capturedImg = "";
+    let signatureImg = "";
+
+    // Camera Access
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => { video.srcObject = stream; });
+
+    function capturePhoto() {
+        canvas.width = 200; canvas.height = 150;
+        canvas.getContext('2d').drawImage(video, 0, 0, 200, 150);
+        capturedImg = canvas.toDataURL('image/jpeg', 0.5); // Compressing to keep it small
+        alert("Face Captured.");
+    }
+
+    // Signature Logic
+    function openSig() {
+        document.getElementById('sig-modal').style.display = 'block';
+        sigCanvas.width = window.innerWidth * 0.9;
+        sigCanvas.height = window.innerHeight * 0.6;
+        ctx.strokeStyle = "black"; ctx.lineWidth = 3;
+    }
+
+    let drawing = false;
+    sigCanvas.addEventListener('mousedown', () => drawing = true);
+    sigCanvas.addEventListener('mouseup', () => drawing = false);
+    sigCanvas.addEventListener('mousemove', draw);
+    sigCanvas.addEventListener('touchstart', (e) => { drawing = true; e.preventDefault(); });
+    sigCanvas.addEventListener('touchend', () => drawing = false);
+    sigCanvas.addEventListener('touchmove', (e) => { draw(e.touches[0]); e.preventDefault(); });
+
+    function draw(e) {
+        if(!drawing) return;
+        const rect = sigCanvas.getBoundingClientRect();
+        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    }
+
+    function saveSig() {
+        signatureImg = sigCanvas.toDataURL();
+        document.getElementById('signature-preview').innerHTML = `<img src="${signatureImg}" style="height:100%">`;
+        closeSig();
+    }
+
+    function closeSig() { document.getElementById('sig-modal').style.display = 'none'; }
+
+    function submitData() {
+        const playerCode = Math.floor(1000 + Math.random() * 9000);
+        const data = {
+            name: document.getElementById('user-name').value,
+            age: document.getElementById('user-age').value,
+            location: document.getElementById('user-location').value,
+            blood: document.getElementById('user-blood').value,
+            photo: capturedImg,
+            signature: signatureImg,
+            p_id: playerCode
+        };
+
+        // Save to LocalStorage for Checker.html
+        let players = JSON.parse(localStorage.getItem('players') || "[]");
+        players.push(data);
+        localStorage.setItem('players', JSON.stringify(players));
+
+        // EmailJS
+        emailjs.send("service_yjcswf2", "template_jzy40rl", {
+            player_name: data.name,
+            player_id: playerCode,
+            location: data.location
+        }).then(() => {
+            alert("IDENTITY SECURED. Code: " + playerCode);
+            location.reload(); // Quick reset for next player
+        });
+    }
+</script>
+</body>
+</html>
